@@ -191,8 +191,8 @@ class GameApp {
       this.blocks.push(new Block(910, 400, 25, 80, 'wood'));
       this.blocks.push(new Block(865, 350, 130, 20, 'wood'));
 
-      this.dogs.push(new Dog(865, 545, 22, 100));
-      this.dogs.push(new Dog(865, 430, 20, 90));
+      this.dogs.push(new Dog(865, 520, 22, 100)); // Inside lower chamber on ground
+      this.dogs.push(new Dog(865, 420, 20, 90));  // On top of upper roof
     } else if (levelNum === 2) {
       // Bone Fortress with TNT
       this.blocks.push(new Block(750, 520, 30, 100, 'stone'));
@@ -204,9 +204,9 @@ class GameApp {
       this.blocks.push(new Block(940, 400, 25, 80, 'glass'));
       this.blocks.push(new Block(870, 350, 170, 20, 'glass'));
 
-      this.dogs.push(new Dog(810, 545, 22, 120));
-      this.dogs.push(new Dog(930, 545, 22, 120));
-      this.dogs.push(new Dog(870, 310, 26, 160, true)); // Boss
+      this.dogs.push(new Dog(810, 440, 22, 120)); // On lower roof
+      this.dogs.push(new Dog(930, 440, 22, 120)); // On lower roof
+      this.dogs.push(new Dog(870, 320, 26, 160, true)); // Boss on top roof
     } else if (levelNum === 3) {
       // Bark Castle
       for (let i = 0; i < 4; i++) {
@@ -219,10 +219,10 @@ class GameApp {
       this.blocks.push(new Block(910, 400, 25, 80, 'tnt'));
       this.blocks.push(new Block(855, 350, 150, 20, 'wood'));
 
-      this.dogs.push(new Dog(780, 545, 22, 100));
-      this.dogs.push(new Dog(855, 545, 28, 200, true));
-      this.dogs.push(new Dog(930, 545, 22, 100));
-      this.dogs.push(new Dog(855, 310, 22, 120));
+      this.dogs.push(new Dog(785, 440, 22, 100)); // On lower roof
+      this.dogs.push(new Dog(855, 440, 28, 200, true)); // Boss lower roof
+      this.dogs.push(new Dog(925, 440, 22, 100)); // On lower roof
+      this.dogs.push(new Dog(855, 320, 22, 120)); // On top roof
     }
   }
 
@@ -274,9 +274,13 @@ class GameApp {
           this.currentCat.y - this.currentCat.radius < b.y + b.height / 2) {
         
         const speed = Math.hypot(this.currentCat.vx, this.currentCat.vy);
-        const damage = speed * 14 * this.currentCat.mass;
+        const damage = speed * 16 * this.currentCat.mass;
         b.takeDamage(damage);
-        b.vAngle = (Math.random() - 0.5) * 0.2;
+        b.vAngle = (Math.random() - 0.5) * 0.4;
+
+        // Realistic Physics Impulse Transfer
+        b.vx += this.currentCat.vx * 0.7;
+        b.vy += this.currentCat.vy * 0.7;
         
         const scoreGain = Math.floor(damage * 3);
         this.addScore(scoreGain);
@@ -286,10 +290,9 @@ class GameApp {
           this.triggerExplosion(b.x, b.y, 150, 220);
         }
 
-        this.currentCat.vx *= -0.35;
-        this.currentCat.vy *= -0.35;
-        b.vx += this.currentCat.vx * 0.6;
-        b.vy += this.currentCat.vy * 0.6;
+        // Cat velocity bounce reduction based on block HP / mass
+        this.currentCat.vx *= 0.5;
+        this.currentCat.vy *= 0.5;
       }
     });
 
@@ -299,16 +302,34 @@ class GameApp {
       const dist = Math.hypot(this.currentCat.x - d.x, this.currentCat.y - d.y);
       if (dist < this.currentCat.radius + d.radius) {
         const speed = Math.hypot(this.currentCat.vx, this.currentCat.vy);
-        const damage = speed * 28 * this.currentCat.mass;
+        const damage = speed * 30 * this.currentCat.mass;
         d.takeDamage(damage);
 
         this.addScore(600);
         this.addFloatingText('+600 🐾', d.x, d.y, '#ffb703');
 
-        this.currentCat.vx *= -0.4;
-        d.vx += this.currentCat.vx * 0.9;
-        d.vy -= 3;
+        // Knockback physics
+        d.vx += this.currentCat.vx * 1.2;
+        d.vy += this.currentCat.vy * 1.2 - 2;
+        this.currentCat.vx *= 0.4;
       }
+    });
+
+    // Blocks vs Dogs secondary collision physics
+    this.blocks.forEach(b => {
+      if (!b.alive || (Math.abs(b.vx) < 1 && Math.abs(b.vy) < 1)) return;
+      this.dogs.forEach(d => {
+        if (!d.alive) return;
+        const dist = Math.hypot(b.x - d.x, b.y - d.y);
+        if (dist < d.radius + b.width / 2) {
+          const speed = Math.hypot(b.vx, b.vy);
+          d.takeDamage(speed * 18);
+          d.vx += b.vx * 0.8;
+          d.vy += b.vy * 0.8;
+          this.addScore(300);
+          this.addFloatingText('+300 💥', d.x, d.y, '#fb8500');
+        }
+      });
     });
   }
 
