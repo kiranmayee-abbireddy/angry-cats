@@ -181,6 +181,7 @@ class GameApp {
     this.blocks = [];
     this.dogs = [];
     this.particles = [];
+    this.debris = [];
     this.floatingTexts = [];
 
     if (levelNum === 1) {
@@ -239,6 +240,45 @@ class GameApp {
     this.floatingTexts.push(new FloatingText(text, x, y, color));
   }
 
+  /**
+   * Spawn Angry Birds-style tumbling debris chunks from a destroyed block.
+   * Count and spread scale with block size.
+   */
+  spawnBlockDebris(block) {
+    const area = block.width * block.height;
+    const count = Math.min(10, Math.max(4, Math.floor(area / 250)));
+
+    for (let i = 0; i < count; i++) {
+      // Chunk size: random fraction of the block
+      const w = block.width  * (0.18 + Math.random() * 0.30);
+      const h = block.height * (0.18 + Math.random() * 0.30);
+
+      // Spawn position: random point inside the block
+      const spawnX = block.x + (Math.random() - 0.5) * block.width  * 0.8;
+      const spawnY = block.y + (Math.random() - 0.5) * block.height * 0.8;
+
+      // Velocity: burst outward + inherit block momentum
+      const angle  = Math.random() * Math.PI * 2;
+      const speed  = 3.5 + Math.random() * 6;
+      const vx = Math.cos(angle) * speed + block.vx * 0.6;
+      const vy = Math.sin(angle) * speed + block.vy * 0.4 - 1.5; // bias upward
+      const vAngle = (Math.random() - 0.5) * 0.35;
+
+      this.debris.push(new Debris(spawnX, spawnY, w, h, block.type, vx, vy, vAngle));
+    }
+
+    // Dust puff particles (small, fast-fading)
+    for (let i = 0; i < 6; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = 2 + Math.random() * 4;
+      const dustColor = block.type === 'glass' ? 'rgba(200,235,245,0.7)'
+                      : block.type === 'stone'  ? 'rgba(160,160,160,0.7)'
+                      : 'rgba(180,130,80,0.7)';
+      this.particles.push(new Particle(block.x, block.y, dustColor,
+        4 + Math.random() * 5, Math.cos(a) * s, Math.sin(a) * s - 1, 25 + Math.random() * 15));
+    }
+  }
+
   triggerExplosion(x, y, radius, damage) {
     this.shakeTime = 15;
     this.shakeMagnitude = 8;
@@ -246,10 +286,13 @@ class GameApp {
     this.blocks.forEach(b => {
       const dist = Math.hypot(b.x - x, b.y - y);
       if (dist < radius) {
+        const wasAlive = b.alive;
         b.takeDamage(damage);
         b.vAngle = (Math.random() - 0.5) * 0.4;
         this.addScore(200);
         this.addFloatingText('+200', b.x, b.y);
+        // Spawn debris if block just died
+        if (wasAlive && !b.alive) this.spawnBlockDebris(b);
       }
     });
 
@@ -284,6 +327,7 @@ class GameApp {
         
         const speed = Math.hypot(this.currentCat.vx, this.currentCat.vy);
         const damage = speed * 16 * this.currentCat.mass;
+        const wasAlive = b.alive;
         b.takeDamage(damage);
         b.vAngle = (Math.random() - 0.5) * 0.4;
 
@@ -294,6 +338,9 @@ class GameApp {
         const scoreGain = Math.floor(damage * 3);
         this.addScore(scoreGain);
         this.addFloatingText(`+${scoreGain}`, b.x, b.y);
+
+        // Spawn debris if block just died
+        if (wasAlive && !b.alive) this.spawnBlockDebris(b);
 
         if (b.type === 'tnt' && !b.alive) {
           this.triggerExplosion(b.x, b.y, 150, 220);
@@ -559,6 +606,14 @@ class GameApp {
       p.draw(this.ctx);
       if (p.life <= 0) this.particles.splice(idx, 1);
     });
+
+    // Debris chunks (drawn above particles for depth)
+    for (let i = this.debris.length - 1; i >= 0; i--) {
+      const d = this.debris[i];
+      d.update(this.gravity);
+      d.draw(this.ctx);
+      if (d.life <= 0) this.debris.splice(i, 1);
+    }
 
     // Floating Score Texts
     this.floatingTexts.forEach((ft, idx) => {

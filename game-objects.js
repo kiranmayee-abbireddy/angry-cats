@@ -178,6 +178,111 @@ class Particle {
   }
 }
 
+/**
+ * Debris Chunk — an Angry Birds-style tumbling piece that flies out
+ * when a block is destroyed. Has material-specific texture and bounces
+ * off the ground before fading away.
+ */
+class Debris {
+  constructor(x, y, w, h, material, vx, vy, vAngle) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+    this.material = material; // 'wood' | 'glass' | 'stone' | 'tnt'
+    this.vx = vx;
+    this.vy = vy;
+    this.angle = Math.random() * Math.PI * 2;
+    this.vAngle = vAngle;
+    this.life = 140 + Math.random() * 60;
+    this.maxLife = this.life;
+    this.bounces = 0;
+  }
+
+  update(gravity) {
+    this.vx *= 0.985;
+    this.vy += gravity;
+    this.x += this.vx;
+    this.y += this.vy;
+    this.angle += this.vAngle;
+    this.vAngle *= 0.97;
+    this.life--;
+
+    // Bounce off ground
+    if (this.y + this.h / 2 >= 570 && this.bounces < 3) {
+      this.y = 570 - this.h / 2;
+      this.vy = -this.vy * (0.35 - this.bounces * 0.1);
+      this.vx *= 0.72;
+      this.vAngle *= 0.55;
+      this.bounces++;
+      if (Math.abs(this.vy) < 0.8) this.vy = 0;
+    } else if (this.y + this.h / 2 >= 570) {
+      this.y = 570 - this.h / 2;
+      this.vy = 0;
+      this.vx *= 0.88;
+      this.vAngle *= 0.3;
+    }
+  }
+
+  draw(ctx) {
+    if (this.life <= 0) return;
+    // Fade out in last 40 frames
+    const alpha = this.life < 40 ? this.life / 40 : 1;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+
+    const w2 = this.w / 2;
+    const h2 = this.h / 2;
+
+    // Fill per material
+    if (this.material === 'wood') {
+      ctx.fillStyle = '#9e6535';
+      ctx.strokeStyle = '#3a1e08';
+    } else if (this.material === 'glass') {
+      ctx.fillStyle = 'rgba(160, 215, 235, 0.88)';
+      ctx.strokeStyle = '#1a6890';
+    } else if (this.material === 'stone') {
+      ctx.fillStyle = '#8a8a8a';
+      ctx.strokeStyle = '#333';
+    } else { // tnt
+      ctx.fillStyle = '#e63946';
+      ctx.strokeStyle = '#800000';
+    }
+
+    ctx.lineWidth = 1.5;
+    ctx.fillRect(-w2, -h2, this.w, this.h);
+    ctx.strokeRect(-w2, -h2, this.w, this.h);
+
+    // Material texture detail
+    if (this.material === 'wood') {
+      // Wood grain
+      ctx.strokeStyle = 'rgba(58,30,8,0.4)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.moveTo(-w2 + 2, -h2); ctx.lineTo(-w2,  h2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo( w2 * 0.2, -h2); ctx.lineTo( w2 * 0.1, h2); ctx.stroke();
+    } else if (this.material === 'glass') {
+      // Glass shimmer triangle
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ctx.beginPath();
+      ctx.moveTo(-w2 + 2, -h2 + 2);
+      ctx.lineTo(w2 * 0.3, -h2 + 2);
+      ctx.lineTo(-w2 + 2,  h2 * 0.3);
+      ctx.closePath();
+      ctx.fill();
+    } else if (this.material === 'stone') {
+      // Stone pebble dot
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.beginPath();
+      ctx.arc(w2 * 0.25, -h2 * 0.2, Math.min(w2, h2) * 0.28, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+}
+
 // Cat Types Configuration mapping to SVG files
 const CAT_TYPES = {
   RED: { name: 'Tom', type: 'RED', color: '#e63946', radius: 22, mass: 1.0, sprite: 'cat_red' },
