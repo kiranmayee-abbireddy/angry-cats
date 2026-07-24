@@ -358,8 +358,9 @@ class GameApp {
 
   checkStageEnd() {
     if (this.stageEndTriggered) return; // already handled this level
+    if (this.dogs.length === 0) return; // guard: level not yet loaded or no dogs
 
-    const allDogsDead = this.dogs.every(d => !d.alive);
+    const allDogsDead = this.dogs.length > 0 && this.dogs.every(d => !d.alive);
     const catFinished = this.currentCat && (this.currentCat.stopped || this.currentCat.x > 1250 || this.currentCat.x < -50);
 
     if (allDogsDead) {

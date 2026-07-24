@@ -444,8 +444,9 @@ class Block {
     this.angle = 0;
     this.vAngle = 0;
 
-    const hpMap = { wood: 90, glass: 40, stone: 200, tnt: 15 };
-    this.hp = hpMap[type] || 90;
+    // Balanced material HP: glass = very fragile, wood = medium, stone = very tough
+    const hpMap = { wood: 120, glass: 30, stone: 280, tnt: 12 };
+    this.hp = hpMap[type] || 120;
     this.maxHp = this.hp;
     this.alive = true;
   }
@@ -453,46 +454,61 @@ class Block {
   update(gravity, otherBlocks = []) {
     if (!this.alive) return;
 
-    this.vx *= 0.96;
+    // Dampen horizontal velocity (friction differs by material)
+    const friction = this.type === 'stone' ? 0.94 : this.type === 'glass' ? 0.97 : 0.95;
+    this.vx *= friction;
     this.vy += gravity;
 
-    const nextY = this.y + this.vy;
-    const nextX = this.x + this.vx;
     let supported = false;
 
-    // Ground check (y = 570)
-    if (nextY + this.height / 2 >= 570) {
+    // --- Vertical support: ground ---
+    if (this.y + this.height / 2 + this.vy >= 570) {
       this.y = 570 - this.height / 2;
-      this.vy = 0;
-      this.vx *= 0.7;
+      this.vy = -this.vy * 0.15; // very little bounce
+      this.vx *= 0.65;           // ground friction
+      this.vAngle *= 0.5;
+      if (Math.abs(this.vy) < 0.5) this.vy = 0;
       supported = true;
-    } else {
-      // Block-on-Block support check
+    }
+
+    if (!supported) {
+      // --- Block-on-block vertical support ---
       for (const b of otherBlocks) {
         if (b === this || !b.alive) continue;
-        const bTop = b.y - b.height / 2;
-        const bLeft = b.x - b.width / 2;
-        const bRight = b.x + b.width / 2;
+        const bTop    = b.y - b.height / 2;
+        const bLeft   = b.x - b.width  / 2;
+        const bRight  = b.x + b.width  / 2;
+        const myLeft  = this.x - this.width  / 2;
+        const myRight = this.x + this.width  / 2;
+        const myBot   = this.y + this.height / 2;
 
-        // Check if this block is sitting on top of another alive block b
-        if (nextX + this.width / 2 >= bLeft - 4 && nextX - this.width / 2 <= bRight + 4 &&
-            this.y + this.height / 2 <= bTop + 10 && nextY + this.height / 2 >= bTop) {
+        // X overlap test
+        const xOverlap = myRight > bLeft + 2 && myLeft < bRight - 2;
+        // Falling onto top of block
+        if (xOverlap && myBot <= bTop + 8 && myBot + this.vy >= bTop) {
           this.y = bTop - this.height / 2;
-          this.vy = 0;
-          this.vx *= 0.8;
+          this.vy = -this.vy * 0.1;
+          this.vx *= 0.75;
+          this.vAngle *= 0.5;
+          if (Math.abs(this.vy) < 0.5) this.vy = 0;
           supported = true;
           break;
         }
       }
     }
 
-    if (!supported) {
+    // Apply movement
+    if (supported) {
+      // Still slide horizontally even when supported
+      if (Math.abs(this.vx) > 0.1) this.x += this.vx;
+      // Settle angle when resting
+      this.angle *= 0.85;
+      this.vAngle *= 0.7;
+    } else {
       this.x += this.vx;
       this.y += this.vy;
       this.angle += this.vAngle;
       this.vAngle *= 0.95;
-    } else {
-      this.x += this.vx;
     }
   }
 
@@ -510,38 +526,99 @@ class Block {
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
 
+    const w2 = this.width / 2;
+    const h2 = this.height / 2;
+    const dmg = 1 - (this.hp / this.maxHp); // 0 = full HP, 1 = dead
+
+    // --- Fill & stroke per material ---
     if (this.type === 'wood') {
-      ctx.fillStyle = '#b07d4f';
-      ctx.strokeStyle = '#4a2c11';
+      // Wood: warm brown, darkens with damage
+      const r = Math.round(176 - dmg * 80);
+      const g = Math.round(125 - dmg * 60);
+      const b = Math.round(79  - dmg * 40);
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.strokeStyle = '#3a1e08';
     } else if (this.type === 'glass') {
-      ctx.fillStyle = 'rgba(173, 216, 230, 0.75)';
-      ctx.strokeStyle = '#2b5876';
+      // Glass: icy blue, becomes more opaque/dark when damaged
+      const alpha = 0.65 + dmg * 0.25;
+      const tint = Math.round(180 - dmg * 80);
+      ctx.fillStyle = `rgba(${tint}, ${Math.round(220 - dmg*60)}, 240, ${alpha})`;
+      ctx.strokeStyle = '#1a6890';
     } else if (this.type === 'stone') {
-      ctx.fillStyle = '#7f8c8d';
-      ctx.strokeStyle = '#2c3e50';
+      // Stone: grey, cracks show as dark veins
+      const v = Math.round(130 - dmg * 60);
+      ctx.fillStyle = `rgb(${v},${v},${v})`;
+      ctx.strokeStyle = '#1a1a2e';
     } else if (this.type === 'tnt') {
-      ctx.fillStyle = '#e63946';
+      ctx.fillStyle = dmg > 0.5 ? '#ff6b35' : '#e63946';
       ctx.strokeStyle = '#800000';
     }
 
-    ctx.lineWidth = 3.5;
-    ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-    ctx.strokeRect(-this.width / 2, -this.height / 2, this.width, this.height);
+    ctx.lineWidth = 3;
+    ctx.fillRect(-w2, -h2, this.width, this.height);
+    ctx.strokeRect(-w2, -h2, this.width, this.height);
 
-    const damagePercent = 1 - (this.hp / this.maxHp);
-    if (damagePercent > 0.3) {
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.lineWidth = 2.5;
+    // --- Damage cracks ---
+    if (dmg > 0.2) {
+      ctx.save();
+      const crackAlpha = Math.min(1, dmg * 1.3);
+      if (this.type === 'glass') {
+        ctx.strokeStyle = `rgba(255,255,255,${crackAlpha})`;
+      } else {
+        ctx.strokeStyle = `rgba(0,0,0,${crackAlpha * 0.85})`;
+      }
+      ctx.lineWidth = dmg > 0.5 ? 2.5 : 1.5;
+      // Crack 1
       ctx.beginPath();
-      ctx.moveTo(-this.width * 0.3, -this.height * 0.3);
-      ctx.lineTo(this.width * 0.2, this.height * 0.1);
-      ctx.lineTo(-this.width * 0.1, this.height * 0.4);
+      ctx.moveTo(-w2 * 0.6, -h2 * 0.5);
+      ctx.lineTo(w2 * 0.1,   h2 * 0.3);
       ctx.stroke();
+      if (dmg > 0.45) {
+        // Crack 2
+        ctx.beginPath();
+        ctx.moveTo(w2 * 0.4,  -h2 * 0.8);
+        ctx.lineTo(-w2 * 0.2,  h2 * 0.6);
+        ctx.stroke();
+        // Crack branch
+        ctx.beginPath();
+        ctx.moveTo(w2 * 0.1, h2 * 0.3);
+        ctx.lineTo(w2 * 0.55, h2 * 0.1);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // Glass shimmer highlight
+    if (this.type === 'glass') {
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.fillRect(-w2 + 3, -h2 + 3, this.width * 0.35, this.height * 0.35);
+    }
+
+    // Wood grain lines
+    if (this.type === 'wood') {
+      ctx.strokeStyle = 'rgba(58,30,8,0.35)';
+      ctx.lineWidth = 1.2;
+      for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * w2 * 0.5, -h2);
+        ctx.lineTo(i * w2 * 0.4,  h2);
+        ctx.stroke();
+      }
+    }
+
+    // Stone texture dots
+    if (this.type === 'stone') {
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      [[w2*0.3, -h2*0.3], [-w2*0.4, h2*0.2], [w2*0.1, h2*0.4]].forEach(([px, py]) => {
+        ctx.beginPath();
+        ctx.arc(px, py, Math.min(w2, h2) * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+      });
     }
 
     if (this.type === 'tnt') {
       ctx.fillStyle = '#fff';
-      ctx.font = '900 13px "Fredoka One", cursive, sans-serif';
+      ctx.font = `900 ${Math.min(13, this.width * 0.35)}px "Fredoka One", cursive, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('TNT 💣', 0, 0);
