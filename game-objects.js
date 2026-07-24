@@ -296,18 +296,43 @@ class Dog {
     this.alive = true;
   }
 
-  update(gravity) {
+  update(gravity, blocks = []) {
     if (!this.alive) return;
     this.vx *= 0.98;
     this.vy += gravity;
-    this.x += this.vx;
-    this.y += this.vy;
-    this.angle += this.vx * 0.03;
 
-    if (this.y + this.radius >= 570) {
-      this.y = 570 - this.radius;
-      this.vy = -this.vy * 0.2;
-      this.vx *= 0.8;
+    const nextX = this.x + this.vx;
+    const nextY = this.y + this.vy;
+
+    // Check support on top of horizontal blocks
+    let supported = false;
+    for (const b of blocks) {
+      if (!b.alive) continue;
+      const bTop = b.y - b.height / 2;
+      const bLeft = b.x - b.width / 2;
+      const bRight = b.x + b.width / 2;
+
+      // If dog is above block and landing on it
+      if (nextX >= bLeft - 5 && nextX <= bRight + 5 &&
+          this.y + this.radius <= bTop + 8 && nextY + this.radius >= bTop) {
+        this.y = bTop - this.radius;
+        this.vy = 0;
+        this.vx *= 0.85;
+        supported = true;
+        break;
+      }
+    }
+
+    if (!supported) {
+      this.x += this.vx;
+      this.y += this.vy;
+      this.angle += this.vx * 0.03;
+
+      if (this.y + this.radius >= 570) {
+        this.y = 570 - this.radius;
+        this.vy = -this.vy * 0.2;
+        this.vx *= 0.8;
+      }
     }
   }
 

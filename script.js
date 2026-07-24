@@ -478,7 +478,7 @@ class GameApp {
     });
 
     this.dogs.forEach(d => {
-      d.update(this.gravity);
+      d.update(this.gravity, this.blocks);
       d.draw(this.ctx);
     });
 
