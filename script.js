@@ -421,33 +421,53 @@ class GameApp {
   drawSlingshot() {
     const img = assets.getImage('slingshot');
 
-    // 1. Back Rubber Band (stretches to cat/drag position behind fork)
+    // SVG is 120x200 viewBox, drawn at canvas size 100x166 starting at (slingPos.x-50, 404)
+    // Left strap joint in SVG: cx=26, cy=17 → canvas: x = (slingPos.x-50) + (26/120)*100, y = 404 + (17/200)*166
+    // Right strap joint in SVG: cx=94, cy=17 → canvas: x = (slingPos.x-50) + (94/120)*100, y = 404 + (17/200)*166
+    const drawX = this.slingPos.x - 50;
+    const drawY = 404;
+    const scaleX = 100 / 120;
+    const scaleY = 166 / 200;
+
+    const leftProngX  = drawX + 26 * scaleX;  // ≈ slingPos.x - 28.3
+    const leftProngY  = drawY + 17 * scaleY;  // ≈ 418
+    const rightProngX = drawX + 94 * scaleX;  // ≈ slingPos.x + 28.3
+    const rightProngY = drawY + 17 * scaleY;  // ≈ 418
+
+    // 1. Back Rubber Band (drawn behind the slingshot frame)
     this.ctx.strokeStyle = '#2b1704';
-    this.ctx.lineWidth = 8;
+    this.ctx.lineWidth = 7;
     this.ctx.lineCap = 'round';
+    this.ctx.setLineDash([]);
     if (this.isDragging) {
       this.ctx.beginPath();
-      this.ctx.moveTo(this.slingPos.x - 32, this.slingPos.y - 45);
-      this.ctx.lineTo(this.dragPos.x - 10, this.dragPos.y);
+      this.ctx.moveTo(leftProngX, leftProngY);
+      this.ctx.lineTo(this.dragPos.x, this.dragPos.y);
+      this.ctx.stroke();
+    } else {
+      // Idle: draw short rest band between both prongs
+      this.ctx.beginPath();
+      this.ctx.moveTo(leftProngX, leftProngY);
+      this.ctx.lineTo(rightProngX, rightProngY);
       this.ctx.stroke();
     }
 
-    // 2. Main Slingshot Wooden Y-Frame Image Asset
+    // 2. Slingshot Wooden Y-Frame Image Asset
     if (img && img.complete && img.naturalWidth !== 0) {
-      this.ctx.drawImage(img, this.slingPos.x - 45, this.slingPos.y - 60, 90, 150);
+      this.ctx.drawImage(img, drawX, drawY, 100, 166);
     } else {
-      // Vector backup fork
       this.ctx.fillStyle = '#6e4723';
-      this.ctx.fillRect(this.slingPos.x - 12, this.slingPos.y, 24, 100);
+      this.ctx.fillRect(this.slingPos.x - 12, 450, 24, 120);
     }
 
-    // 3. Front Rubber Band & Leather Pouch (stretches over the front)
+    // 3. Front Rubber Band & Leather Pouch (drawn over the front of the frame)
+    this.ctx.strokeStyle = '#5a320d';
+    this.ctx.lineWidth = 6;
+    this.ctx.lineCap = 'round';
     if (this.isDragging) {
-      this.ctx.strokeStyle = '#4a290a';
-      this.ctx.lineWidth = 7;
       this.ctx.beginPath();
-      this.ctx.moveTo(this.slingPos.x + 32, this.slingPos.y - 45);
-      this.ctx.lineTo(this.dragPos.x + 10, this.dragPos.y);
+      this.ctx.moveTo(rightProngX, rightProngY);
+      this.ctx.lineTo(this.dragPos.x, this.dragPos.y);
       this.ctx.stroke();
 
       // Leather Sling Pouch holding the cat
@@ -457,7 +477,7 @@ class GameApp {
       this.ctx.strokeStyle = '#1a0b03';
       this.ctx.lineWidth = 2.5;
       this.ctx.beginPath();
-      this.ctx.ellipse(0, 0, 18, 12, Math.atan2(this.slingPos.y - this.dragPos.y, this.slingPos.x - this.dragPos.x), 0, Math.PI * 2);
+      this.ctx.ellipse(0, 0, 18, 11, Math.atan2(this.slingPos.y - this.dragPos.y, this.slingPos.x - this.dragPos.x), 0, Math.PI * 2);
       this.ctx.fill();
       this.ctx.stroke();
       this.ctx.restore();
@@ -511,11 +531,11 @@ class GameApp {
       d.draw(this.ctx);
     });
 
-    // Waiting Cats Queue
+    // Waiting Cats Queue (Seated neatly on ground level y=570 - radius)
     this.cats.forEach((cat, index) => {
       if (index > this.activeCatIndex) {
-        cat.x = this.slingPos.x - (index - this.activeCatIndex) * 45;
-        cat.y = 550;
+        cat.x = this.slingPos.x - 90 - (index - this.activeCatIndex - 1) * 45;
+        cat.y = 570 - cat.radius;
         cat.draw(this.ctx);
       }
     });
