@@ -452,49 +452,46 @@ class Block {
   update(gravity, otherBlocks = []) {
     if (!this.alive) return;
 
-    // Apply block velocity & gravity only if disturbed or moving
-    if (Math.abs(this.vx) > 0.05 || Math.abs(this.vy) > 0.05 || this.isFalling) {
-      this.vx *= 0.96;
-      this.vy += gravity;
+    this.vx *= 0.96;
+    this.vy += gravity;
 
-      const nextY = this.y + this.vy;
-      const nextX = this.x + this.vx;
-      let supported = false;
+    const nextY = this.y + this.vy;
+    const nextX = this.x + this.vx;
+    let supported = false;
 
-      // Ground check
-      if (nextY + this.height / 2 >= 570) {
-        this.y = 570 - this.height / 2;
-        this.vy = 0;
-        this.vx *= 0.7;
-        this.isFalling = false;
-        supported = true;
-      } else {
-        // Block-on-Block support check
-        for (const b of otherBlocks) {
-          if (b === this || !b.alive) continue;
-          const bTop = b.y - b.height / 2;
-          const bLeft = b.x - b.width / 2;
-          const bRight = b.x + b.width / 2;
+    // Ground check (y = 570)
+    if (nextY + this.height / 2 >= 570) {
+      this.y = 570 - this.height / 2;
+      this.vy = 0;
+      this.vx *= 0.7;
+      supported = true;
+    } else {
+      // Block-on-Block support check
+      for (const b of otherBlocks) {
+        if (b === this || !b.alive) continue;
+        const bTop = b.y - b.height / 2;
+        const bLeft = b.x - b.width / 2;
+        const bRight = b.x + b.width / 2;
 
-          // Check if this block is sitting on top of another block b
-          if (nextX + this.width / 2 >= bLeft + 2 && nextX - this.width / 2 <= bRight - 2 &&
-              this.y + this.height / 2 <= bTop + 8 && nextY + this.height / 2 >= bTop) {
-            this.y = bTop - this.height / 2;
-            this.vy = 0;
-            this.vx *= 0.8;
-            this.isFalling = false;
-            supported = true;
-            break;
-          }
+        // Check if this block is sitting on top of another alive block b
+        if (nextX + this.width / 2 >= bLeft - 4 && nextX - this.width / 2 <= bRight + 4 &&
+            this.y + this.height / 2 <= bTop + 10 && nextY + this.height / 2 >= bTop) {
+          this.y = bTop - this.height / 2;
+          this.vy = 0;
+          this.vx *= 0.8;
+          supported = true;
+          break;
         }
       }
+    }
 
-      if (!supported) {
-        this.x += this.vx;
-        this.y += this.vy;
-        this.angle += this.vAngle;
-        this.vAngle *= 0.95;
-      }
+    if (!supported) {
+      this.x += this.vx;
+      this.y += this.vy;
+      this.angle += this.vAngle;
+      this.vAngle *= 0.95;
+    } else {
+      this.x += this.vx;
     }
   }
 

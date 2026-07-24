@@ -183,16 +183,23 @@ class GameApp {
 
     if (levelNum === 1) {
       // Outpost
+      // Ground Pillars (Bottom floor)
       this.blocks.push(new Block(800, 520, 30, 100, 'wood'));
       this.blocks.push(new Block(930, 520, 30, 100, 'wood'));
+
+      // Floor 1 Plank (Lower Roof resting directly on ground pillars)
       this.blocks.push(new Block(865, 460, 170, 20, 'glass'));
 
-      this.blocks.push(new Block(820, 400, 25, 80, 'wood'));
-      this.blocks.push(new Block(910, 400, 25, 80, 'wood'));
-      this.blocks.push(new Block(865, 350, 130, 20, 'wood'));
+      // Upper Pillars (Floor 2, resting on Floor 1 Plank)
+      this.blocks.push(new Block(820, 410, 25, 80, 'wood'));
+      this.blocks.push(new Block(910, 410, 25, 80, 'wood'));
 
-      this.dogs.push(new Dog(865, 435, 22, 100)); // Resting securely on lower roof (y=460 plank)
-      this.dogs.push(new Dog(865, 325, 20, 90));  // Resting securely on upper roof (y=350 plank)
+      // Floor 2 Roof Plank (Top Roof resting on Floor 2 Pillars)
+      this.blocks.push(new Block(865, 360, 130, 20, 'wood'));
+
+      // Dogs standing on floor levels
+      this.dogs.push(new Dog(865, 438, 20, 100)); // Lower Dog standing on Floor 1 Glass Plank
+      this.dogs.push(new Dog(865, 338, 20, 90));  // Upper Dog standing on Top Wood Roof Plank
     } else if (levelNum === 2) {
       // Bone Fortress with TNT
       this.blocks.push(new Block(750, 520, 30, 100, 'stone'));
