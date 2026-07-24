@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Angry Cats - Physics Arcade Game</title>
+  <meta name="description" content="An open-source physics-based browser game clone of Angry Birds featuring Cats launching at Dogs!">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header Controls -->
+    <header class="game-header">
+      <div class="logo-title">
+        <span class="cat-icon">🐱</span> ANGRY CATS
+      </div>
+      <div class="game-stats">
+        <div class="stat-box">
+          <span class="stat-label">LEVEL</span>
+          <span id="level-num">1</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">SCORE</span>
+          <span id="score-val">0</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">HIGH SCORE</span>
+          <span id="high-score-val">0</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btn-sound" class="btn-icon" title="Toggle Sound">🔊</button>
+        <button id="btn-restart" class="btn-icon" title="Restart Level">🔄</button>
+        <button id="btn-select-level" class="btn-primary-sm">Levels</button>
+      </div>
+    </header>
+
+    <!-- Canvas Container -->
+    <main class="canvas-container">
+      <canvas id="gameCanvas" width="1200" height="650"></canvas>
+      
+      <!-- Slingshot / Ability Prompt Overlay -->
+      <div id="ability-hint" class="ability-hint hidden">
+        Tap screen mid-flight to use Special Ability! ⚡
+      </div>
+
+      <!-- Start Screen Modal -->
+      <div id="modal-start" class="modal-overlay">
+        <div class="modal-card">
+          <h1 class="game-main-title">ANGRY CATS 🐾</h1>
+          <p class="subtitle">Dogs stole the catnip! Launch your furious felines to demolish their fortresses!</p>
+          
+          <div class="cat-preview-grid">
+            <div class="cat-card">
+              <span class="avatar red-cat-bg">😸</span>
+              <strong>Tom (Red)</strong>
+              <small>Standard balanced shooter</small>
+            </div>
+            <div class="cat-card">
+              <span class="avatar yellow-cat-bg">⚡</span>
+              <strong>Speedy (Yellow)</strong>
+              <small>Tap for Super Turbo Boost!</small>
+            </div>
+            <div class="cat-card">
+              <span class="avatar black-cat-bg">💣</span>
+              <strong>Bomb (Black)</strong>
+              <small>Explodes on impact or tap!</small>
+            </div>
+            <div class="cat-card">
+              <span class="avatar fat-cat-bg">🦁</span>
+              <strong>Garfield (Big)</strong>
+              <small>Heavy mass fortress destroyer</small>
+            </div>
+          </div>
+
+          <button id="btn-start-game" class="btn-launch">PLAY NOW</button>
+        </div>
+      </div>
+
+      <!-- Level Select Modal -->
+      <div id="modal-levels" class="modal-overlay hidden">
+        <div class="modal-card">
+          <h2>SELECT STAGE</h2>
+          <div class="level-buttons-grid">
+            <button class="level-btn active" data-level="1">Stage 1<br><small>Doggy Outpost</small></button>
+            <button class="level-btn" data-level="2">Stage 2<br><small>Bone Fortress</small></button>
+            <button class="level-btn" data-level="3">Stage 3<br><small>Bark Castle</small></button>
+          </div>
+          <button id="btn-close-levels" class="btn-secondary">Back to Game</button>
+        </div>
+      </div>
+
+      <!-- Level Complete / GameOver Modal -->
+      <div id="modal-end" class="modal-overlay hidden">
+        <div class="modal-card">
+          <h2 id="end-title">STAGE CLEARED! 🎉</h2>
+          <div class="stars-rating" id="stars-container">
+            <span class="star lit">★</span>
+            <span class="star lit">★</span>
+            <span class="star">★</span>
+          </div>
+          <p id="end-score-text">Final Score: 14,500</p>
+          
+          <div class="modal-buttons">
+            <button id="btn-next-level" class="btn-launch">Next Level ➔</button>
+            <button id="btn-retry-level" class="btn-secondary">Retry Stage 🔄</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="game-footer">
+      <p>Angry Cats © Open Source Physics Game | Built with HTML5 Canvas & Pure JS</p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
