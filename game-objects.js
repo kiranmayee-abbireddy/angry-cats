@@ -20,13 +20,12 @@ class AssetManager {
 }
 
 const assets = new AssetManager();
-assets.loadImage('cat_red', 'assets/cat_red.png');
-assets.loadImage('cat_yellow', 'assets/cat_yellow.png');
-assets.loadImage('cat_black', 'assets/cat_black.png');
+assets.loadImage('cat_red', 'assets/red.svg');
+assets.loadImage('cat_yellow', 'assets/yellow.svg');
+assets.loadImage('cat_black', 'assets/black.svg');
+assets.loadImage('cat_orange', 'assets/orange.svg');
 assets.loadImage('dog', 'assets/dog.png');
 assets.loadImage('bg', 'assets/bg.png');
-assets.loadImage('cats_sheet', 'assets/cats_sheet.png');
-assets.loadImage('dogs_sheet', 'assets/dogs_sheet.png');
 assets.loadImage('wood_banner', 'assets/wood_banner.png');
 
 // Sound Engine using Web Audio API Synthesizer
@@ -178,12 +177,12 @@ class Particle {
   }
 }
 
-// Cat Types Configuration
+// Cat Types Configuration mapping to SVG files
 const CAT_TYPES = {
   RED: { name: 'Tom', type: 'RED', color: '#e63946', radius: 22, mass: 1.0, sprite: 'cat_red' },
   YELLOW: { name: 'Speedy', type: 'YELLOW', color: '#ffb703', radius: 20, mass: 0.85, sprite: 'cat_yellow' },
   BLACK: { name: 'Bomb', type: 'BLACK', color: '#2b2d42', radius: 25, mass: 1.6, sprite: 'cat_black' },
-  FAT: { name: 'Garfield', type: 'FAT', color: '#fb8500', radius: 32, mass: 3.2, sprite: 'cat_red' }
+  FAT: { name: 'Garfield', type: 'FAT', color: '#fb8500', radius: 32, mass: 3.2, sprite: 'cat_orange' }
 };
 
 // Unified Cat Entity using Generated Image Sprites
