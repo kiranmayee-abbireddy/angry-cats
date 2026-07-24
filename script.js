@@ -391,6 +391,36 @@ class GameApp {
   }
 
   /**
+   * Give an immediate downward impulse to every block resting directly
+   * on top of a newly-destroyed block.  Without this, the constraint
+   * solver would catch them on the same frame and prevent visible fall.
+   */
+  collapseAbove(deadBlock) {
+    const deadTop  = deadBlock.y - deadBlock.height / 2;
+    const deadLeft = deadBlock.x - deadBlock.width  / 2;
+    const deadRight= deadBlock.x + deadBlock.width  / 2;
+
+    for (const b of this.blocks) {
+      if (!b.alive) continue;
+      const bBot   = b.y + b.height / 2;
+      const bLeft  = b.x - b.width  / 2;
+      const bRight = b.x + b.width  / 2;
+
+      // X ranges must overlap and block's bottom must be sitting on deadTop
+      const xOverlap = bRight > deadLeft + 2 && bLeft < deadRight - 2;
+      const onTop    = Math.abs(bBot - deadTop) < 8;
+
+      if (xOverlap && onTop) {
+        b.wakeUp();
+        b.vy   += 1.8;                         // kick downward — enough to clear constraint
+        b.vAngle += (Math.random() - 0.5) * 0.06; // slight topple spin
+        // Recursively collapse anything above this block too
+        this.collapseAbove(b);
+      }
+    }
+  }
+
+  /**
    * Spawn Angry Birds-style tumbling debris chunks from a destroyed block.
    * Count and spread scale with block size.
    */
@@ -452,6 +482,7 @@ class GameApp {
         if (wasAlive && !b.alive) {
           this.spawnBlockDebris(b);
           this.wakeBlocksNear(b.x, b.y, Math.max(b.width, b.height) * 2.5);
+          this.collapseAbove(b);
         }
       }
     });
@@ -503,10 +534,11 @@ class GameApp {
         this.addScore(scoreGain);
         this.addFloatingText(`+${scoreGain}`, b.x, b.y);
 
-        // Debris + further cascade if block just died
+        // Debris + upward cascade collapse if block just died
         if (wasAlive && !b.alive) {
           this.spawnBlockDebris(b);
-          this.wakeBlocksNear(b.x, b.y, Math.max(b.width, b.height) * 4);
+          this.wakeBlocksNear(b.x, b.y, Math.max(b.width, b.height) * 5);
+          this.collapseAbove(b); // push anything resting on this block into free-fall
         }
 
         if (b.type === 'tnt' && !b.alive) {
