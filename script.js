@@ -473,7 +473,7 @@ class GameApp {
 
     // Entities
     this.blocks.forEach(b => {
-      b.update(this.gravity);
+      b.update(this.gravity, this.blocks);
       b.draw(this.ctx);
     });
 
