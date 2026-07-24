@@ -21,6 +21,12 @@ class AssetManager {
 
 const assets = new AssetManager();
 assets.loadImage('cat_red', 'assets/cat_red.png');
+assets.loadImage('cat_yellow', 'assets/cat_yellow.png');
+assets.loadImage('cat_black', 'assets/cat_black.png');
+assets.loadImage('dog', 'assets/dog.png');
+assets.loadImage('bg', 'assets/bg.png');
+assets.loadImage('cats_sheet', 'assets/cats_sheet.png');
+assets.loadImage('dogs_sheet', 'assets/dogs_sheet.png');
 assets.loadImage('wood_banner', 'assets/wood_banner.png');
 
 // Sound Engine using Web Audio API Synthesizer
@@ -174,13 +180,13 @@ class Particle {
 
 // Cat Types Configuration
 const CAT_TYPES = {
-  RED: { name: 'Tom', type: 'RED', color: '#e63946', radius: 22, mass: 1.0 },
-  YELLOW: { name: 'Speedy', type: 'YELLOW', color: '#ffb703', radius: 20, mass: 0.85 },
-  BLACK: { name: 'Bomb', type: 'BLACK', color: '#2b2d42', radius: 25, mass: 1.6 },
-  FAT: { name: 'Garfield', type: 'FAT', color: '#fb8500', radius: 32, mass: 3.2 }
+  RED: { name: 'Tom', type: 'RED', color: '#e63946', radius: 22, mass: 1.0, sprite: 'cat_red' },
+  YELLOW: { name: 'Speedy', type: 'YELLOW', color: '#ffb703', radius: 20, mass: 0.85, sprite: 'cat_yellow' },
+  BLACK: { name: 'Bomb', type: 'BLACK', color: '#2b2d42', radius: 25, mass: 1.6, sprite: 'cat_black' },
+  FAT: { name: 'Garfield', type: 'FAT', color: '#fb8500', radius: 32, mass: 3.2, sprite: 'cat_red' }
 };
 
-// 100% Unified Vector Cat Entity
+// Unified Cat Entity using Generated Image Sprites
 class Cat {
   constructor(x, y, catConfig) {
     this.x = x;
@@ -256,116 +262,27 @@ class Cat {
     ctx.rotate(this.angle);
 
     const r = this.radius;
+    const img = assets.getImage(this.config.sprite) || assets.getImage('cat_red');
 
-    // Outer Body Shadow & Stroke
-    ctx.fillStyle = this.config.color;
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3.5;
-
-    // Body Shapes (Yellow is triangle like Chuck, others round)
-    if (this.config.type === 'YELLOW') {
-      ctx.beginPath();
-      ctx.moveTo(0, -r * 1.3);
-      ctx.lineTo(-r * 1.1, r * 1.1);
-      ctx.lineTo(r * 1.1, r * 1.1);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+    if (img && img.complete && img.naturalWidth !== 0) {
+      // Draw Image Sprite directly
+      ctx.drawImage(img, -r * 1.25, -r * 1.25, r * 2.5, r * 2.5);
     } else {
+      // Vector backup
+      ctx.fillStyle = this.config.color;
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
     }
 
-    // Belly Highlight
-    ctx.fillStyle = '#ffeedd';
-    ctx.beginPath();
-    ctx.arc(0, r * 0.35, r * 0.55, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Cat Ears (Matching Black Outline & Color)
-    ctx.fillStyle = this.config.color;
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3;
-
-    // Left Ear
-    ctx.beginPath();
-    ctx.moveTo(-r * 0.7, -r * 0.4);
-    ctx.lineTo(-r * 1.1, -r * 1.2);
-    ctx.lineTo(-r * 0.2, -r * 0.85);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Right Ear
-    ctx.beginPath();
-    ctx.moveTo(r * 0.7, -r * 0.4);
-    ctx.lineTo(r * 1.1, -r * 1.2);
-    ctx.lineTo(r * 0.2, -r * 0.85);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Furious Eyebrows (Angry Birds Trademark)
-    ctx.fillStyle = '#000000';
-    ctx.beginPath();
-    ctx.moveTo(-r * 0.7, -r * 0.45);
-    ctx.lineTo(0, -r * 0.15);
-    ctx.lineTo(r * 0.7, -r * 0.45);
-    ctx.lineTo(0, -r * 0.28);
-    ctx.closePath();
-    ctx.fill();
-
-    // Angry Eyes
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(-r * 0.3, -r * 0.05, r * 0.26, 0, Math.PI * 2);
-    ctx.arc(r * 0.3, -r * 0.05, r * 0.26, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#000000';
-    ctx.beginPath();
-    ctx.arc(-r * 0.25, -r * 0.05, r * 0.12, 0, Math.PI * 2);
-    ctx.arc(r * 0.25, -r * 0.05, r * 0.12, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Cat Snout / Whiskers
-    ctx.fillStyle = '#ffcad4';
-    ctx.beginPath();
-    ctx.arc(0, r * 0.15, r * 0.12, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    // Whiskers left
-    ctx.moveTo(-r * 0.4, r * 0.15); ctx.lineTo(-r * 1.1, r * 0.05);
-    ctx.moveTo(-r * 0.4, r * 0.25); ctx.lineTo(-r * 1.1, r * 0.3);
-    // Whiskers right
-    ctx.moveTo(r * 0.4, r * 0.15); ctx.lineTo(r * 1.1, r * 0.05);
-    ctx.moveTo(r * 0.4, r * 0.25); ctx.lineTo(r * 1.1, r * 0.3);
-    ctx.stroke();
-
-    // Fuse on Bomb Cat
-    if (this.config.type === 'BLACK') {
-      ctx.strokeStyle = '#ffb703';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(0, -r);
-      ctx.quadraticCurveTo(8, -r - 12, 12, -r - 18);
-      ctx.stroke();
-      ctx.fillStyle = '#e63946';
-      ctx.beginPath();
-      ctx.arc(12, -r - 18, 4, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
     ctx.restore();
   }
 }
 
-// 100% Unified Vector Dog Entity (Angry Birds Pigs Style)
+// Unified Dog Entity using Generated Image Sprites
 class Dog {
   constructor(x, y, radius = 22, hp = 100, isBoss = false) {
     this.x = x;
@@ -410,79 +327,33 @@ class Dog {
     ctx.rotate(this.angle);
 
     const r = this.radius;
+    const img = assets.getImage('dog');
 
-    // Body (Greenish Tan Dog matching Pigs color palette)
-    ctx.fillStyle = this.isBoss ? '#52796f' : '#76c893';
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    if (img && img.complete && img.naturalWidth !== 0) {
+      // Draw Generated Dog Image Asset
+      ctx.drawImage(img, -r * 1.25, -r * 1.25, r * 2.5, r * 2.5);
 
-    // Large Round Snout
-    ctx.fillStyle = '#b5e7a0';
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.2, r * 0.55, r * 0.4, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Dog Nostrils
-    ctx.fillStyle = '#2d6a4f';
-    ctx.beginPath();
-    ctx.arc(-r * 0.2, r * 0.2, r * 0.12, 0, Math.PI * 2);
-    ctx.arc(r * 0.2, r * 0.2, r * 0.12, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Floppy Dog Ears
-    ctx.fillStyle = '#40916c';
-    ctx.beginPath();
-    ctx.ellipse(-r * 0.85, -r * 0.3, r * 0.22, r * 0.45, Math.PI / 4, 0, Math.PI * 2);
-    ctx.ellipse(r * 0.85, -r * 0.3, r * 0.22, r * 0.45, -Math.PI / 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Eyes (X when low HP)
-    if (this.hp < this.maxHp * 0.5) {
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(-r * 0.4, -r * 0.3); ctx.lineTo(-r * 0.1, -r * 0.1);
-      ctx.moveTo(-r * 0.1, -r * 0.3); ctx.lineTo(-r * 0.4, -r * 0.1);
-      ctx.moveTo(r * 0.1, -r * 0.3); ctx.lineTo(r * 0.4, -r * 0.1);
-      ctx.moveTo(r * 0.4, -r * 0.3); ctx.lineTo(r * 0.1, -r * 0.1);
-      ctx.stroke();
+      if (this.isBoss) {
+        ctx.fillStyle = '#ffb703';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.6, -r * 0.85);
+        ctx.lineTo(-r * 0.8, -r * 1.45);
+        ctx.lineTo(-r * 0.3, -r * 1.1);
+        ctx.lineTo(0, -r * 1.6);
+        ctx.lineTo(r * 0.3, -r * 1.1);
+        ctx.lineTo(r * 0.8, -r * 1.45);
+        ctx.lineTo(r * 0.6, -r * 0.85);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
     } else {
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = '#76c893';
       ctx.beginPath();
-      ctx.arc(-r * 0.3, -r * 0.25, r * 0.24, 0, Math.PI * 2);
-      ctx.arc(r * 0.3, -r * 0.25, r * 0.24, 0, Math.PI * 2);
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = '#000000';
-      ctx.beginPath();
-      ctx.arc(-r * 0.25, -r * 0.25, r * 0.1, 0, Math.PI * 2);
-      ctx.arc(r * 0.25, -r * 0.25, r * 0.1, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Boss Crown / Helmet
-    if (this.isBoss) {
-      ctx.fillStyle = '#ffb703';
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(-r * 0.6, -r * 0.85);
-      ctx.lineTo(-r * 0.8, -r * 1.45);
-      ctx.lineTo(-r * 0.3, -r * 1.1);
-      ctx.lineTo(0, -r * 1.6);
-      ctx.lineTo(r * 0.3, -r * 1.1);
-      ctx.lineTo(r * 0.8, -r * 1.45);
-      ctx.lineTo(r * 0.6, -r * 0.85);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
     }
 
     ctx.restore();
