@@ -25,6 +25,7 @@ assets.loadImage('cat_yellow', 'assets/yellow.svg');
 assets.loadImage('cat_black', 'assets/black.svg');
 assets.loadImage('cat_orange', 'assets/orange.svg');
 assets.loadImage('dog', 'assets/dog.svg');
+assets.loadImage('slingshot', 'assets/slingshot.svg');
 assets.loadImage('bg', 'assets/bg.png');
 assets.loadImage('wood_banner', 'assets/wood_banner.png');
 

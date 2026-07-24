@@ -419,26 +419,48 @@ class GameApp {
   }
 
   drawSlingshot() {
-    // Back band
-    this.ctx.strokeStyle = '#3d261d';
-    this.ctx.lineWidth = 7;
+    const img = assets.getImage('slingshot');
+
+    // 1. Back Rubber Band (stretches to cat/drag position behind fork)
+    this.ctx.strokeStyle = '#2b1704';
+    this.ctx.lineWidth = 8;
+    this.ctx.lineCap = 'round';
     if (this.isDragging) {
       this.ctx.beginPath();
-      this.ctx.moveTo(this.slingPos.x - 15, this.slingPos.y - 20);
-      this.ctx.lineTo(this.dragPos.x, this.dragPos.y);
+      this.ctx.moveTo(this.slingPos.x - 32, this.slingPos.y - 45);
+      this.ctx.lineTo(this.dragPos.x - 10, this.dragPos.y);
       this.ctx.stroke();
     }
 
-    // Wooden Fork base
-    this.ctx.fillStyle = '#6e4723';
-    this.ctx.fillRect(this.slingPos.x - 12, this.slingPos.y, 24, 120);
+    // 2. Main Slingshot Wooden Y-Frame Image Asset
+    if (img && img.complete && img.naturalWidth !== 0) {
+      this.ctx.drawImage(img, this.slingPos.x - 45, this.slingPos.y - 60, 90, 150);
+    } else {
+      // Vector backup fork
+      this.ctx.fillStyle = '#6e4723';
+      this.ctx.fillRect(this.slingPos.x - 12, this.slingPos.y, 24, 100);
+    }
 
-    // Front band
+    // 3. Front Rubber Band & Leather Pouch (stretches over the front)
     if (this.isDragging) {
+      this.ctx.strokeStyle = '#4a290a';
+      this.ctx.lineWidth = 7;
       this.ctx.beginPath();
-      this.ctx.moveTo(this.slingPos.x + 15, this.slingPos.y - 20);
-      this.ctx.lineTo(this.dragPos.x, this.dragPos.y);
+      this.ctx.moveTo(this.slingPos.x + 32, this.slingPos.y - 45);
+      this.ctx.lineTo(this.dragPos.x + 10, this.dragPos.y);
       this.ctx.stroke();
+
+      // Leather Sling Pouch holding the cat
+      this.ctx.save();
+      this.ctx.translate(this.dragPos.x, this.dragPos.y);
+      this.ctx.fillStyle = '#3a1e0b';
+      this.ctx.strokeStyle = '#1a0b03';
+      this.ctx.lineWidth = 2.5;
+      this.ctx.beginPath();
+      this.ctx.ellipse(0, 0, 18, 12, Math.atan2(this.slingPos.y - this.dragPos.y, this.slingPos.x - this.dragPos.x), 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.stroke();
+      this.ctx.restore();
     }
   }
 
