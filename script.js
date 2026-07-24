@@ -28,6 +28,7 @@ class GameApp {
     this.highScore = parseInt(localStorage.getItem('angry_cats_highscore') || '0');
     this.currentLevel = 1;
     this.isDragging = false;
+    this.stageEndTriggered = false; // prevents checkStageEnd firing modal multiple times per level
     this.dragPos = { x: this.slingPos.x, y: this.slingPos.y };
 
     this.setupUIListeners();
@@ -170,6 +171,7 @@ class GameApp {
     document.getElementById('level-num').textContent = levelNum;
     this.score = 0;
     this.updateScoreUI();
+    this.stageEndTriggered = false; // reset guard for new level
 
     const catConfigs = [CAT_TYPES.RED, CAT_TYPES.YELLOW, CAT_TYPES.BLACK, CAT_TYPES.FAT];
     this.cats = catConfigs.map(c => new Cat(this.slingPos.x, this.slingPos.y, c));
@@ -355,10 +357,13 @@ class GameApp {
   }
 
   checkStageEnd() {
+    if (this.stageEndTriggered) return; // already handled this level
+
     const allDogsDead = this.dogs.every(d => !d.alive);
     const catFinished = this.currentCat && (this.currentCat.stopped || this.currentCat.x > 1250 || this.currentCat.x < -50);
 
     if (allDogsDead) {
+      this.stageEndTriggered = true;
       setTimeout(() => this.showEndModal(true), 800);
     } else if (catFinished) {
       if (this.activeCatIndex < this.cats.length - 1) {
@@ -367,6 +372,7 @@ class GameApp {
         this.currentCat.x = this.slingPos.x;
         this.currentCat.y = this.slingPos.y;
       } else {
+        this.stageEndTriggered = true;
         setTimeout(() => this.showEndModal(false), 1200);
       }
     }
