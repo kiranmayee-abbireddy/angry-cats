@@ -539,21 +539,34 @@ class Dog {
 // Destructible Physics Block Entity
 class Block {
   constructor(x, y, width, height, type = 'wood') {
-    this.x = x;
-    this.y = y;
-    this.width = width;
+    this.x      = x;
+    this.y      = y;
+    this.width  = width;
     this.height = height;
-    this.type = type;
-    this.vx = 0;
-    this.vy = 0;
-    this.angle = 0;
+    this.type   = type;
+    this.vx     = 0;
+    this.vy     = 0;
+    this.angle  = 0;
     this.vAngle = 0;
 
-    // Balanced material HP: glass = very fragile, wood = medium, stone = very tough
-    const hpMap = { wood: 120, glass: 30, stone: 280, tnt: 12 };
-    this.hp = hpMap[type] || 120;
-    this.maxHp = this.hp;
-    this.alive = true;
+    // Balanced HP per material
+    const hpMap   = { wood: 120, glass: 30, stone: 280, tnt: 12 };
+    // Realistic mass: stone >> wood > tnt > glass
+    const massMap = { wood: 1.2, glass: 0.65, stone: 3.2, tnt: 0.9 };
+    this.hp       = hpMap[type]   || 120;
+    this.maxHp    = this.hp;
+    this.mass     = massMap[type] || 1.2;
+    this.alive    = true;
+
+    // Sleeping system — blocks start fully settled; only wake when disturbed
+    this.sleeping   = true;
+    this.sleepTimer = 0;
+  }
+
+  /** Wake this block so physics kicks in. */
+  wakeUp() {
+    this.sleeping   = false;
+    this.sleepTimer = 0;
   }
 
   update(gravity, otherBlocks = []) {
@@ -619,6 +632,7 @@ class Block {
 
   takeDamage(amount) {
     this.hp -= amount;
+    this.wakeUp(); // any damage wakes the block
     if (this.hp <= 0) {
       this.alive = false;
       sounds.playImpact();

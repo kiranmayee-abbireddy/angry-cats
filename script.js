@@ -234,10 +234,160 @@ class GameApp {
       this.dogs.push(new Dog(925, 440, 22, 100)); // On lower roof
       this.dogs.push(new Dog(855, 320, 22, 120)); // On top roof
     }
+
+    // ── Pre-settle: run physics silently so the building is perfectly stable ──
+    // Temporarily wake all blocks so the constraint solver can settle them.
+    this.blocks.forEach(b => { b.sleeping = false; });
+    for (let s = 0; s < 120; s++) this.updateBlockPhysics();
+    // Force everything to sleep at rested positions.
+    this.blocks.forEach(b => { b.sleeping = true; b.vx = 0; b.vy = 0; b.vAngle = 0; });
   }
 
   addFloatingText(text, x, y, color = '#ffb703') {
     this.floatingTexts.push(new FloatingText(text, x, y, color));
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // BLOCK PHYSICS ENGINE  (Angry Birds-style sleeping + AABB constraint solver)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Main physics tick for all blocks.
+   * 1. Integrate gravity + velocity for awake blocks.
+   * 2. Resolve ground + block-block constraints (4 iterations).
+   * 3. Detect sleeping (blocks that have settled).
+   */
+  updateBlockPhysics() {
+    const alive = this.blocks.filter(b => b.alive);
+
+    // 1. Integrate awake blocks
+    for (const b of alive) {
+      if (b.sleeping) continue;
+      b.vy     += this.gravity;
+      b.vx     *= 0.986;      // air resistance
+      b.vAngle *= 0.91;       // angular damping
+      b.x      += b.vx;
+      b.y      += b.vy;
+      b.angle  += b.vAngle;
+    }
+
+    // 2. Multi-pass constraint resolution
+    for (let iter = 0; iter < 4; iter++) {
+      // Ground constraint
+      for (const b of alive) {
+        if (b.sleeping) continue;
+        if (b.y + b.height / 2 > 570) {
+          b.y = 570 - b.height / 2;
+          if (b.vy > 0.4) {
+            b.vy     = -b.vy * 0.13;
+            b.vAngle *= 0.45;
+          } else {
+            b.vy = 0;
+          }
+          b.vx *= 0.68;
+        }
+      }
+      // Block-block AABB pairs
+      for (let i = 0; i < alive.length - 1; i++) {
+        for (let j = i + 1; j < alive.length; j++) {
+          if (alive[i].sleeping && alive[j].sleeping) continue;
+          this.resolveBlockPair(alive[i], alive[j]);
+        }
+      }
+    }
+
+    // 3. Sleep detection
+    for (const b of alive) {
+      if (b.sleeping) continue;
+      const speed = Math.hypot(b.vx, b.vy);
+      if (speed < 0.08 && Math.abs(b.vAngle) < 0.005) {
+        b.sleepTimer++;
+        if (b.sleepTimer > 45) {
+          b.sleeping  = true;
+          b.vx = 0; b.vy = 0; b.vAngle = 0;
+        }
+      } else {
+        b.sleepTimer = 0;
+      }
+    }
+  }
+
+  /**
+   * AABB collision response between two blocks.
+   * Resolves along the axis of minimum penetration.
+   * Mass-weighted position correction + impulse-based velocity response.
+   */
+  resolveBlockPair(a, b) {
+    const ax1 = a.x - a.width  / 2, ax2 = a.x + a.width  / 2;
+    const ay1 = a.y - a.height / 2, ay2 = a.y + a.height / 2;
+    const bx1 = b.x - b.width  / 2, bx2 = b.x + b.width  / 2;
+    const by1 = b.y - b.height / 2, by2 = b.y + b.height / 2;
+
+    if (ax2 <= bx1 || bx2 <= ax1 || ay2 <= by1 || by2 <= ay1) return; // no overlap
+
+    const overlapX   = Math.min(ax2 - bx1, bx2 - ax1);
+    const overlapY   = Math.min(ay2 - by1, by2 - ay1);
+    const totalMass  = a.mass + b.mass;
+    const restitution = 0.11;
+
+    if (overlapY <= overlapX) {
+      // ── Vertical collision (stacking) ──
+      const aAbove = a.y < b.y;
+      const top = aAbove ? a : b;
+      const bot = aAbove ? b : a;
+      const push = overlapY / totalMass;
+
+      top.y -= push * bot.mass;
+      bot.y += push * top.mass;
+
+      const relVy = top.vy - bot.vy;
+      if (relVy > 0) {
+        const j    = -(1 + restitution) * relVy / totalMass;
+        top.vy    += j * bot.mass / totalMass;
+        bot.vy    -= j * top.mass / totalMass;
+      }
+      // Surface friction: dampen relative sliding
+      const relVx = top.vx - bot.vx;
+      top.vx -= relVx * 0.13 * (bot.mass / totalMass);
+      bot.vx += relVx * 0.13 * (top.mass / totalMass);
+
+    } else {
+      // ── Horizontal collision (side push / topple) ──
+      const aLeft = a.x < b.x;
+      const left  = aLeft ? a : b;
+      const right = aLeft ? b : a;
+      const push  = overlapX / totalMass;
+
+      left.x  -= push * right.mass;
+      right.x += push * left.mass;
+
+      const relVx = left.vx - right.vx;
+      if (relVx > 0) {
+        const j   = -(1 + restitution) * relVx;
+        left.vx  += j * right.mass / totalMass;
+        right.vx -= j * left.mass  / totalMass;
+      }
+      // Topple effect: side collision imparts slight spin
+      left.vAngle  += (Math.random() - 0.5) * 0.028;
+      right.vAngle += (Math.random() - 0.5) * 0.028;
+    }
+
+    // Wake both blocks (contact = disturbance)
+    a.wakeUp(); b.wakeUp();
+  }
+
+  /**
+   * Wake all alive blocks within a given radius.
+   * Called when a block is destroyed or explodes so neighbours cascade.
+   */
+  wakeBlocksNear(x, y, radius) {
+    for (const b of this.blocks) {
+      if (!b.alive) continue;
+      const dist = Math.hypot(b.x - x, b.y - y);
+      if (dist < radius + (b.width + b.height) * 0.5) {
+        b.wakeUp();
+      }
+    }
   }
 
   /**
@@ -283,16 +433,26 @@ class GameApp {
     this.shakeTime = 15;
     this.shakeMagnitude = 8;
 
+    // Wake everything in blast radius first
+    this.wakeBlocksNear(x, y, radius);
+
     this.blocks.forEach(b => {
       const dist = Math.hypot(b.x - x, b.y - y);
       if (dist < radius) {
         const wasAlive = b.alive;
         b.takeDamage(damage);
-        b.vAngle = (Math.random() - 0.5) * 0.4;
+        b.vAngle = (Math.random() - 0.5) * 0.5;
+        // Blast impulse
+        const ang = Math.atan2(b.y - y, b.x - x);
+        const force = (1 - dist / radius) * 12;
+        b.vx += Math.cos(ang) * force;
+        b.vy += Math.sin(ang) * force - 3;
         this.addScore(200);
         this.addFloatingText('+200', b.x, b.y);
-        // Spawn debris if block just died
-        if (wasAlive && !b.alive) this.spawnBlockDebris(b);
+        if (wasAlive && !b.alive) {
+          this.spawnBlockDebris(b);
+          this.wakeBlocksNear(b.x, b.y, Math.max(b.width, b.height) * 2.5);
+        }
       }
     });
 
@@ -324,29 +484,35 @@ class GameApp {
           this.currentCat.x - this.currentCat.radius < b.x + b.width / 2 &&
           this.currentCat.y + this.currentCat.radius > b.y - b.height / 2 &&
           this.currentCat.y - this.currentCat.radius < b.y + b.height / 2) {
-        
-        const speed = Math.hypot(this.currentCat.vx, this.currentCat.vy);
+
+        const speed  = Math.hypot(this.currentCat.vx, this.currentCat.vy);
         const damage = speed * 16 * this.currentCat.mass;
         const wasAlive = b.alive;
         b.takeDamage(damage);
         b.vAngle = (Math.random() - 0.5) * 0.4;
 
-        // Realistic Physics Impulse Transfer
-        b.vx += this.currentCat.vx * 0.7;
-        b.vy += this.currentCat.vy * 0.7;
-        
+        // Impulse transfer — cat pushes block
+        b.vx += this.currentCat.vx * (0.8 / b.mass);
+        b.vy += this.currentCat.vy * (0.8 / b.mass);
+
+        // Wake the hit block + nearby blocks (cascade collapse)
+        this.wakeBlocksNear(b.x, b.y, Math.max(b.width, b.height) * 3.5);
+
         const scoreGain = Math.floor(damage * 3);
         this.addScore(scoreGain);
         this.addFloatingText(`+${scoreGain}`, b.x, b.y);
 
-        // Spawn debris if block just died
-        if (wasAlive && !b.alive) this.spawnBlockDebris(b);
+        // Debris + further cascade if block just died
+        if (wasAlive && !b.alive) {
+          this.spawnBlockDebris(b);
+          this.wakeBlocksNear(b.x, b.y, Math.max(b.width, b.height) * 4);
+        }
 
         if (b.type === 'tnt' && !b.alive) {
           this.triggerExplosion(b.x, b.y, 150, 220);
         }
 
-        // Cat velocity bounce reduction based on block HP / mass
+        // Cat slows on impact (mass-based)
         this.currentCat.vx *= 0.5;
         this.currentCat.vy *= 0.5;
       }
@@ -357,31 +523,31 @@ class GameApp {
       if (!d.alive) return;
       const dist = Math.hypot(this.currentCat.x - d.x, this.currentCat.y - d.y);
       if (dist < this.currentCat.radius + d.radius) {
-        const speed = Math.hypot(this.currentCat.vx, this.currentCat.vy);
+        const speed  = Math.hypot(this.currentCat.vx, this.currentCat.vy);
         const damage = speed * 30 * this.currentCat.mass;
         d.takeDamage(damage);
 
         this.addScore(600);
         this.addFloatingText('+600 🐾', d.x, d.y, '#ffb703');
 
-        // Knockback physics
         d.vx += this.currentCat.vx * 1.2;
         d.vy += this.currentCat.vy * 1.2 - 2;
         this.currentCat.vx *= 0.4;
       }
     });
 
-    // Blocks vs Dogs secondary collision physics
+    // Moving blocks smashing into dogs
     this.blocks.forEach(b => {
-      if (!b.alive || (Math.abs(b.vx) < 1 && Math.abs(b.vy) < 1)) return;
+      if (!b.alive || b.sleeping) return; // only moving blocks hit dogs
+      const speed = Math.hypot(b.vx, b.vy);
+      if (speed < 0.8) return;
       this.dogs.forEach(d => {
         if (!d.alive) return;
         const dist = Math.hypot(b.x - d.x, b.y - d.y);
-        if (dist < d.radius + b.width / 2) {
-          const speed = Math.hypot(b.vx, b.vy);
-          d.takeDamage(speed * 18);
-          d.vx += b.vx * 0.8;
-          d.vy += b.vy * 0.8;
+        if (dist < d.radius + (b.width + b.height) * 0.4) {
+          d.takeDamage(speed * 20);
+          d.vx += b.vx * 0.9;
+          d.vy += b.vy * 0.9;
           this.addScore(300);
           this.addFloatingText('+300 💥', d.x, d.y, '#fb8500');
         }
@@ -574,11 +740,9 @@ class GameApp {
     // Draw Trajectory
     this.drawTrajectory();
 
-    // Entities
-    this.blocks.forEach(b => {
-      b.update(this.gravity, this.blocks);
-      b.draw(this.ctx);
-    });
+    // Entities — blocks: physics handled by updateBlockPhysics()
+    this.updateBlockPhysics();
+    this.blocks.forEach(b => b.draw(this.ctx));
 
     this.dogs.forEach(d => {
       d.update(this.gravity, this.blocks, this.dogs);
