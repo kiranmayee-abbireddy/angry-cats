@@ -496,7 +496,8 @@ class GameApp {
         b.vy += this.currentCat.vy * (0.8 / b.mass);
 
         // Wake the hit block + nearby blocks (cascade collapse)
-        this.wakeBlocksNear(b.x, b.y, Math.max(b.width, b.height) * 3.5);
+        // Radius = 1.5x max dimension — enough to cascade to adjacent blocks only
+        this.wakeBlocksNear(b.x, b.y, Math.max(b.width, b.height) * 1.5);
 
         const scoreGain = Math.floor(damage * 3);
         this.addScore(scoreGain);
@@ -536,18 +537,28 @@ class GameApp {
       }
     });
 
-    // Moving blocks smashing into dogs
+    // Moving blocks physically smashing into dogs
     this.blocks.forEach(b => {
-      if (!b.alive || b.sleeping) return; // only moving blocks hit dogs
+      if (!b.alive || b.sleeping) return;
       const speed = Math.hypot(b.vx, b.vy);
-      if (speed < 0.8) return;
+      if (speed < 3.0) return; // must be fast-moving to hurt a dog
       this.dogs.forEach(d => {
         if (!d.alive) return;
-        const dist = Math.hypot(b.x - d.x, b.y - d.y);
-        if (dist < d.radius + (b.width + b.height) * 0.4) {
-          d.takeDamage(speed * 20);
-          d.vx += b.vx * 0.9;
-          d.vy += b.vy * 0.9;
+        // Proper AABB vs circle: find nearest point on block rect to dog center.
+        // This way a block the dog is standing ON (touching but not penetrating)
+        // will never accidentally deal damage.
+        const bLeft   = b.x - b.width  / 2;
+        const bRight  = b.x + b.width  / 2;
+        const bTop    = b.y - b.height / 2;
+        const bBottom = b.y + b.height / 2;
+        const nearX = Math.max(bLeft, Math.min(d.x, bRight));
+        const nearY = Math.max(bTop,  Math.min(d.y, bBottom));
+        const dist  = Math.hypot(nearX - d.x, nearY - d.y);
+        // Only damage if block is actually penetrating the dog's circle
+        if (dist < d.radius * 0.85) {
+          d.takeDamage(speed * 18);
+          d.vx += b.vx * 0.85;
+          d.vy += b.vy * 0.85 - 1;
           this.addScore(300);
           this.addFloatingText('+300 💥', d.x, d.y, '#fb8500');
         }
