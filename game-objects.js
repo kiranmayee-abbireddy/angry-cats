@@ -296,7 +296,7 @@ class Dog {
     this.alive = true;
   }
 
-  update(gravity, blocks = []) {
+  update(gravity, blocks = [], otherDogs = []) {
     if (!this.alive) return;
     this.vx *= 0.98;
     this.vy += gravity;
@@ -304,22 +304,66 @@ class Dog {
     const nextX = this.x + this.vx;
     const nextY = this.y + this.vy;
 
-    // Check support on top of horizontal blocks
+    // 1. Check support on top of horizontal blocks & side walls
     let supported = false;
     for (const b of blocks) {
       if (!b.alive) continue;
       const bTop = b.y - b.height / 2;
+      const bBottom = b.y + b.height / 2;
       const bLeft = b.x - b.width / 2;
       const bRight = b.x + b.width / 2;
 
-      // If dog is above block and landing on it
-      if (nextX >= bLeft - 5 && nextX <= bRight + 5 &&
-          this.y + this.radius <= bTop + 8 && nextY + this.radius >= bTop) {
+      // Check top support
+      if (nextX >= bLeft - this.radius * 0.8 && nextX <= bRight + this.radius * 0.8 &&
+          this.y + this.radius <= bTop + 12 && nextY + this.radius >= bTop) {
         this.y = bTop - this.radius;
         this.vy = 0;
         this.vx *= 0.85;
         supported = true;
         break;
+      }
+
+      // Check side collisions with vertical pillars
+      if (this.y + this.radius > bTop + 4 && this.y - this.radius < bBottom - 4) {
+        if (this.x < bLeft && nextX + this.radius >= bLeft) {
+          this.x = bLeft - this.radius;
+          this.vx = -Math.abs(this.vx) * 0.4;
+        } else if (this.x > bRight && nextX - this.radius <= bRight) {
+          this.x = bRight + this.radius;
+          this.vx = Math.abs(this.vx) * 0.4;
+        }
+      }
+    }
+
+    // 2. Dog-to-Dog collision resolution (prevent overlapping / allow stacking)
+    for (const other of otherDogs) {
+      if (other === this || !other.alive) continue;
+      const dx = this.x - other.x;
+      const dy = this.y - other.y;
+      const dist = Math.hypot(dx, dy);
+      const minDist = this.radius + other.radius;
+
+      if (dist < minDist && dist > 0) {
+        const overlap = minDist - dist;
+        const nx = dx / dist;
+        const ny = dy / dist;
+
+        // Separate dogs along collision normal
+        this.x += nx * overlap * 0.5;
+        this.y += ny * overlap * 0.5;
+
+        // Velocity transfer
+        const kx = this.vx - other.vx;
+        const ky = this.vy - other.vy;
+        const p = 2 * (nx * kx + ny * ky) / 2;
+        this.vx -= p * nx * 0.5;
+        this.vy -= p * ny * 0.5;
+
+        // Stacking support check (if standing on top of another dog)
+        if (ny < -0.7) {
+          supported = true;
+          this.vy = 0;
+        }
       }
     }
 
@@ -333,6 +377,8 @@ class Dog {
         this.vy = -this.vy * 0.2;
         this.vx *= 0.8;
       }
+    } else {
+      this.x += this.vx;
     }
   }
 

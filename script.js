@@ -191,8 +191,8 @@ class GameApp {
       this.blocks.push(new Block(910, 400, 25, 80, 'wood'));
       this.blocks.push(new Block(865, 350, 130, 20, 'wood'));
 
-      this.dogs.push(new Dog(865, 520, 22, 100)); // Inside lower chamber on ground
-      this.dogs.push(new Dog(865, 420, 20, 90));  // On top of upper roof
+      this.dogs.push(new Dog(865, 435, 22, 100)); // Resting securely on lower roof (y=460 plank)
+      this.dogs.push(new Dog(865, 325, 20, 90));  // Resting securely on upper roof (y=350 plank)
     } else if (levelNum === 2) {
       // Bone Fortress with TNT
       this.blocks.push(new Block(750, 520, 30, 100, 'stone'));
@@ -478,7 +478,7 @@ class GameApp {
     });
 
     this.dogs.forEach(d => {
-      d.update(this.gravity, this.blocks);
+      d.update(this.gravity, this.blocks, this.dogs);
       d.draw(this.ctx);
     });
 
