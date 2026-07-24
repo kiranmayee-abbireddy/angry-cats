@@ -1,5 +1,5 @@
 /**
- * Main Game Controller and Slingshot Logic
+ * Main Game Controller and Physics System
  */
 
 class GameApp {
@@ -9,15 +9,20 @@ class GameApp {
     this.gravity = 0.35;
 
     // Slingshot anchor
-    this.slingPos = { x: 180, y: 470 };
+    this.slingPos = { x: 180, y: 460 };
 
-    // Game states
+    // Game entities & state
     this.cats = [];
     this.activeCatIndex = 0;
     this.currentCat = null;
     this.dogs = [];
     this.blocks = [];
     this.particles = [];
+    this.floatingTexts = [];
+
+    // Screen Shake effect
+    this.shakeTime = 0;
+    this.shakeMagnitude = 0;
 
     this.score = 0;
     this.highScore = parseInt(localStorage.getItem('angry_cats_highscore') || '0');
@@ -74,25 +79,27 @@ class GameApp {
       this.loadLevel(nextLvl);
     });
 
-    // Canvas Mouse / Touch events for Slingshot & Abilities
+    // Slingshot & Ability Interactions
     const handleDown = (x, y) => {
       if (this.currentCat && !this.currentCat.launched) {
         const dist = Math.hypot(x - this.slingPos.x, y - this.slingPos.y);
-        if (dist < 60) {
+        if (dist < 70) {
           this.isDragging = true;
         }
       } else if (this.currentCat && this.currentCat.launched && !this.currentCat.usedAbility) {
-        const exploded = this.currentCat.useAbility();
-        if (exploded) {
-          this.triggerExplosion(this.currentCat.x, this.currentCat.y, 110, 150);
+        const abilityResult = this.currentCat.useAbility();
+        if (abilityResult === 'EXPLODE') {
+          this.triggerExplosion(this.currentCat.x, this.currentCat.y, 140, 220);
           this.currentCat.stopped = true;
+        } else if (abilityResult === 'BOOST') {
+          this.addFloatingText('TURBO SPEED! ⚡', this.currentCat.x, this.currentCat.y - 20, '#ffb703');
         }
       }
     };
 
     const handleMove = (x, y) => {
       if (!this.isDragging) return;
-      const maxPull = 110;
+      const maxPull = 120;
       const dx = x - this.slingPos.x;
       const dy = y - this.slingPos.y;
       const dist = Math.hypot(dx, dy);
@@ -119,8 +126,8 @@ class GameApp {
 
         const dx = this.slingPos.x - this.dragPos.x;
         const dy = this.slingPos.y - this.dragPos.y;
-        this.currentCat.vx = dx * 0.18;
-        this.currentCat.vy = dy * 0.18;
+        this.currentCat.vx = dx * 0.19;
+        this.currentCat.vy = dy * 0.19;
         this.currentCat.launched = true;
 
         document.getElementById('ability-hint').classList.remove('hidden');
@@ -140,7 +147,7 @@ class GameApp {
 
     window.addEventListener('mouseup', handleUp);
 
-    // Touch support
+    // Touch Support
     this.canvas.addEventListener('touchstart', (e) => {
       if (e.touches.length > 0) {
         const rect = this.canvas.getBoundingClientRect();
@@ -164,68 +171,76 @@ class GameApp {
     this.score = 0;
     this.updateScoreUI();
 
-    // Prepare Cats Queue
     const catConfigs = [CAT_TYPES.RED, CAT_TYPES.YELLOW, CAT_TYPES.BLACK, CAT_TYPES.FAT];
     this.cats = catConfigs.map(c => new Cat(this.slingPos.x, this.slingPos.y, c));
     this.activeCatIndex = 0;
     this.currentCat = this.cats[0];
 
-    // Load Stage Obstacles and Dogs
     this.blocks = [];
     this.dogs = [];
+    this.particles = [];
+    this.floatingTexts = [];
 
     if (levelNum === 1) {
-      // Outpost layout
-      this.blocks.push(new Block(800, 530, 30, 100, 'wood'));
-      this.blocks.push(new Block(920, 530, 30, 100, 'wood'));
-      this.blocks.push(new Block(860, 470, 160, 20, 'glass'));
+      // Outpost
+      this.blocks.push(new Block(800, 520, 30, 100, 'wood'));
+      this.blocks.push(new Block(930, 520, 30, 100, 'wood'));
+      this.blocks.push(new Block(865, 460, 170, 20, 'glass'));
 
-      this.blocks.push(new Block(820, 410, 25, 80, 'wood'));
-      this.blocks.push(new Block(900, 410, 25, 80, 'wood'));
-      this.blocks.push(new Block(860, 360, 120, 20, 'wood'));
+      this.blocks.push(new Block(820, 400, 25, 80, 'wood'));
+      this.blocks.push(new Block(910, 400, 25, 80, 'wood'));
+      this.blocks.push(new Block(865, 350, 130, 20, 'wood'));
 
-      this.dogs.push(new Dog(860, 550, 20, 100));
-      this.dogs.push(new Dog(860, 440, 18, 90));
+      this.dogs.push(new Dog(865, 545, 22, 100));
+      this.dogs.push(new Dog(865, 430, 20, 90));
     } else if (levelNum === 2) {
-      // Fortress with TNT
-      this.blocks.push(new Block(750, 530, 30, 100, 'stone'));
-      this.blocks.push(new Block(870, 530, 30, 100, 'tnt'));
-      this.blocks.push(new Block(990, 530, 30, 100, 'stone'));
-      this.blocks.push(new Block(870, 470, 270, 20, 'stone'));
+      // Bone Fortress with TNT
+      this.blocks.push(new Block(750, 520, 30, 100, 'stone'));
+      this.blocks.push(new Block(870, 520, 35, 100, 'tnt'));
+      this.blocks.push(new Block(990, 520, 30, 100, 'stone'));
+      this.blocks.push(new Block(870, 460, 270, 20, 'stone'));
 
-      this.blocks.push(new Block(800, 410, 25, 80, 'glass'));
-      this.blocks.push(new Block(940, 410, 25, 80, 'glass'));
-      this.blocks.push(new Block(870, 360, 170, 20, 'glass'));
+      this.blocks.push(new Block(800, 400, 25, 80, 'glass'));
+      this.blocks.push(new Block(940, 400, 25, 80, 'glass'));
+      this.blocks.push(new Block(870, 350, 170, 20, 'glass'));
 
-      this.dogs.push(new Dog(810, 550, 22, 120));
-      this.dogs.push(new Dog(930, 550, 22, 120));
-      this.dogs.push(new Dog(870, 320, 24, 150, true)); // Boss
+      this.dogs.push(new Dog(810, 545, 22, 120));
+      this.dogs.push(new Dog(930, 545, 22, 120));
+      this.dogs.push(new Dog(870, 310, 26, 160, true)); // Boss
     } else if (levelNum === 3) {
       // Bark Castle
       for (let i = 0; i < 4; i++) {
         const x = 750 + i * 70;
-        this.blocks.push(new Block(x, 530, 25, 100, i % 2 === 0 ? 'stone' : 'wood'));
+        this.blocks.push(new Block(x, 520, 25, 100, i % 2 === 0 ? 'stone' : 'wood'));
       }
-      this.blocks.push(new Block(855, 470, 240, 20, 'stone'));
+      this.blocks.push(new Block(855, 460, 240, 20, 'stone'));
 
-      this.blocks.push(new Block(800, 410, 25, 80, 'tnt'));
-      this.blocks.push(new Block(910, 410, 25, 80, 'tnt'));
-      this.blocks.push(new Block(855, 360, 150, 20, 'wood'));
+      this.blocks.push(new Block(800, 400, 25, 80, 'tnt'));
+      this.blocks.push(new Block(910, 400, 25, 80, 'tnt'));
+      this.blocks.push(new Block(855, 350, 150, 20, 'wood'));
 
-      this.dogs.push(new Dog(780, 550, 20, 100));
-      this.dogs.push(new Dog(855, 550, 26, 180, true));
-      this.dogs.push(new Dog(930, 550, 20, 100));
-      this.dogs.push(new Dog(855, 320, 22, 120));
+      this.dogs.push(new Dog(780, 545, 22, 100));
+      this.dogs.push(new Dog(855, 545, 28, 200, true));
+      this.dogs.push(new Dog(930, 545, 22, 100));
+      this.dogs.push(new Dog(855, 310, 22, 120));
     }
   }
 
+  addFloatingText(text, x, y, color = '#ffb703') {
+    this.floatingTexts.push(new FloatingText(text, x, y, color));
+  }
+
   triggerExplosion(x, y, radius, damage) {
-    // Damage blocks and dogs in area
+    this.shakeTime = 15;
+    this.shakeMagnitude = 8;
+
     this.blocks.forEach(b => {
       const dist = Math.hypot(b.x - x, b.y - y);
       if (dist < radius) {
         b.takeDamage(damage);
-        this.addScore(150);
+        b.vAngle = (Math.random() - 0.5) * 0.4;
+        this.addScore(200);
+        this.addFloatingText('+200', b.x, b.y);
       }
     });
 
@@ -233,15 +248,17 @@ class GameApp {
       const dist = Math.hypot(d.x - x, d.y - y);
       if (dist < radius) {
         d.takeDamage(damage);
-        this.addScore(400);
+        d.vx += (d.x - x) * 0.15;
+        d.vy -= 4;
+        this.addScore(500);
+        this.addFloatingText('+500 💥', d.x, d.y, '#e63946');
       }
     });
 
-    // Create explosion particles
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 35; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const spd = Math.random() * 8 + 2;
-      this.particles.push(new Particle(x, y, '#fb8500', Math.random() * 6 + 3, Math.cos(angle) * spd, Math.sin(angle) * spd, 35));
+      const spd = Math.random() * 9 + 3;
+      this.particles.push(new Particle(x, y, '#fb8500', Math.random() * 8 + 3, Math.cos(angle) * spd, Math.sin(angle) * spd, 40));
     }
   }
 
@@ -257,19 +274,22 @@ class GameApp {
           this.currentCat.y - this.currentCat.radius < b.y + b.height / 2) {
         
         const speed = Math.hypot(this.currentCat.vx, this.currentCat.vy);
-        const damage = speed * 12 * this.currentCat.mass;
+        const damage = speed * 14 * this.currentCat.mass;
         b.takeDamage(damage);
-        this.addScore(Math.floor(damage * 2));
+        b.vAngle = (Math.random() - 0.5) * 0.2;
+        
+        const scoreGain = Math.floor(damage * 3);
+        this.addScore(scoreGain);
+        this.addFloatingText(`+${scoreGain}`, b.x, b.y);
 
         if (b.type === 'tnt' && !b.alive) {
-          this.triggerExplosion(b.x, b.y, 140, 200);
+          this.triggerExplosion(b.x, b.y, 150, 220);
         }
 
-        // Kinetic collision response
-        this.currentCat.vx *= -0.4;
-        this.currentCat.vy *= -0.4;
-        b.vx += this.currentCat.vx * 0.5;
-        b.vy += this.currentCat.vy * 0.5;
+        this.currentCat.vx *= -0.35;
+        this.currentCat.vy *= -0.35;
+        b.vx += this.currentCat.vx * 0.6;
+        b.vy += this.currentCat.vy * 0.6;
       }
     });
 
@@ -279,12 +299,15 @@ class GameApp {
       const dist = Math.hypot(this.currentCat.x - d.x, this.currentCat.y - d.y);
       if (dist < this.currentCat.radius + d.radius) {
         const speed = Math.hypot(this.currentCat.vx, this.currentCat.vy);
-        const damage = speed * 25 * this.currentCat.mass;
+        const damage = speed * 28 * this.currentCat.mass;
         d.takeDamage(damage);
-        this.addScore(500);
 
-        this.currentCat.vx *= -0.5;
-        d.vx += this.currentCat.vx * 0.8;
+        this.addScore(600);
+        this.addFloatingText('+600 🐾', d.x, d.y, '#ffb703');
+
+        this.currentCat.vx *= -0.4;
+        d.vx += this.currentCat.vx * 0.9;
+        d.vy -= 3;
       }
     });
   }
@@ -310,7 +333,6 @@ class GameApp {
     if (allDogsDead) {
       setTimeout(() => this.showEndModal(true), 800);
     } else if (catFinished) {
-      // Advance to next cat
       if (this.activeCatIndex < this.cats.length - 1) {
         this.activeCatIndex++;
         this.currentCat = this.cats[this.activeCatIndex];
@@ -344,21 +366,21 @@ class GameApp {
     if (!this.isDragging || !this.currentCat) return;
 
     this.ctx.save();
-    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-    this.ctx.lineWidth = 3;
-    this.ctx.setLineDash([6, 6]);
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+    this.ctx.lineWidth = 3.5;
+    this.ctx.setLineDash([8, 8]);
     this.ctx.beginPath();
 
     const dx = this.slingPos.x - this.dragPos.x;
     const dy = this.slingPos.y - this.dragPos.y;
     let simX = this.slingPos.x;
     let simY = this.slingPos.y;
-    let simVx = dx * 0.18;
-    let simVy = dy * 0.18;
+    let simVx = dx * 0.19;
+    let simVy = dy * 0.19;
 
     this.ctx.moveTo(simX, simY);
-    for (let i = 0; i < 28; i++) {
-      simVx *= 0.992;
+    for (let i = 0; i < 30; i++) {
+      simVx *= 0.993;
       simVy += this.gravity;
       simX += simVx;
       simY += simVy;
@@ -371,7 +393,7 @@ class GameApp {
   drawSlingshot() {
     // Back band
     this.ctx.strokeStyle = '#3d261d';
-    this.ctx.lineWidth = 6;
+    this.ctx.lineWidth = 7;
     if (this.isDragging) {
       this.ctx.beginPath();
       this.ctx.moveTo(this.slingPos.x - 15, this.slingPos.y - 20);
@@ -380,8 +402,8 @@ class GameApp {
     }
 
     // Wooden Fork base
-    this.ctx.fillStyle = '#8d5b4c';
-    this.ctx.fillRect(this.slingPos.x - 10, this.slingPos.y, 20, 110);
+    this.ctx.fillStyle = '#6e4723';
+    this.ctx.fillRect(this.slingPos.x - 12, this.slingPos.y, 24, 120);
 
     // Front band
     if (this.isDragging) {
@@ -393,27 +415,42 @@ class GameApp {
   }
 
   gameLoop() {
-    // Background / Sky gradient
-    const skyGrad = this.ctx.createLinearGradient(0, 0, 0, 650);
-    skyGrad.addColorStop(0, '#87ceeb');
-    skyGrad.addColorStop(0.7, '#e0f6ff');
-    skyGrad.addColorStop(1, '#94d2bd');
-    this.ctx.fillStyle = skyGrad;
-    this.ctx.fillRect(0, 0, 1200, 650);
+    this.ctx.save();
 
-    // Ground
+    // Handle Camera Screen Shake
+    if (this.shakeTime > 0) {
+      const offsetX = (Math.random() - 0.5) * this.shakeMagnitude;
+      const offsetY = (Math.random() - 0.5) * this.shakeMagnitude;
+      this.ctx.translate(offsetX, offsetY);
+      this.shakeTime--;
+    }
+
+    // Background Graphic / Scenery
+    const bgImg = assets.getImage('bg');
+    if (bgImg && bgImg.complete && bgImg.naturalWidth !== 0) {
+      this.ctx.drawImage(bgImg, 0, 0, 1200, 650);
+    } else {
+      const skyGrad = this.ctx.createLinearGradient(0, 0, 0, 650);
+      skyGrad.addColorStop(0, '#87ceeb');
+      skyGrad.addColorStop(0.7, '#e0f6ff');
+      skyGrad.addColorStop(1, '#94d2bd');
+      this.ctx.fillStyle = skyGrad;
+      this.ctx.fillRect(0, 0, 1200, 650);
+    }
+
+    // Ground Grass
     this.ctx.fillStyle = '#2a9d8f';
-    this.ctx.fillRect(0, 580, 1200, 70);
+    this.ctx.fillRect(0, 570, 1200, 80);
     this.ctx.fillStyle = '#e9c46a';
-    this.ctx.fillRect(0, 580, 1200, 8);
+    this.ctx.fillRect(0, 570, 1200, 10);
 
     // Draw Slingshot
     this.drawSlingshot();
 
-    // Draw Trajectory preview
+    // Draw Trajectory
     this.drawTrajectory();
 
-    // Update & Draw Entities
+    // Entities
     this.blocks.forEach(b => {
       b.update(this.gravity);
       b.draw(this.ctx);
@@ -424,31 +461,39 @@ class GameApp {
       d.draw(this.ctx);
     });
 
-    // Draw Waiting Cats Queue
+    // Waiting Cats Queue
     this.cats.forEach((cat, index) => {
       if (index > this.activeCatIndex) {
-        cat.x = this.slingPos.x - (index - this.activeCatIndex) * 35;
-        cat.y = 560;
+        cat.x = this.slingPos.x - (index - this.activeCatIndex) * 45;
+        cat.y = 550;
         cat.draw(this.ctx);
       }
     });
 
-    // Current Cat update & draw
+    // Active Cat
     if (this.currentCat) {
       this.currentCat.update(this.gravity);
       this.currentCat.draw(this.ctx);
     }
 
-    // Particles update & draw
+    // Particles
     this.particles.forEach((p, idx) => {
       p.update();
       p.draw(this.ctx);
       if (p.life <= 0) this.particles.splice(idx, 1);
     });
 
+    // Floating Score Texts
+    this.floatingTexts.forEach((ft, idx) => {
+      ft.update();
+      ft.draw(this.ctx);
+      if (ft.alpha <= 0) this.floatingTexts.splice(idx, 1);
+    });
+
     this.handleCollisions();
     this.checkStageEnd();
 
+    this.ctx.restore();
     requestAnimationFrame(this.gameLoop);
   }
 }
@@ -457,3 +502,4 @@ class GameApp {
 window.addEventListener('DOMContentLoaded', () => {
   window.game = new GameApp();
 });
+
